@@ -1,12 +1,13 @@
 # transcribe_meeting.py
-# Main script - Incorporates segment materialization BEFORE model unloading.
+# Main script - Removes the explicit model unloading block to avoid crash.
+# Uses segment materialization. Should be paired with tuned multiprocessing alignment.py.
 
 import argparse
 import sys
 import os
 import time
 import traceback
-import torch # Needed for empty_cache
+import torch # Still potentially needed by modules if not unloaded
 
 # Import utility modules
 import config
@@ -32,7 +33,7 @@ def main():
         video_path, config.REPO_ROOT, config.TRANSCRIPT_BASE_DIR_NAME, config.PROCESSED_VIDEO_DIR
     )
     print(f"Processing video: {video_path}"); print(f"  Intermediate audio: {paths['audio_file']}")
-    print(f"  Output directory: {paths['transcript_subdir']}"); # Print other paths...
+    print(f"  Output directory: {paths['transcript_subdir']}");
     if paths['processed_video_path']: print(f"  Processed video will move to: {paths['processed_video_path']}")
     if not file_manager.create_directories([paths['transcript_subdir'], paths['processed_video_dir']]):
         print(f"Error: Could not create essential transcript directory {paths['transcript_subdir']}. Exiting."); sys.exit(1)
@@ -42,7 +43,7 @@ def main():
 
     # --- Main Processing Block ---
     processing_successful = False
-    # Initialize variables that might be deleted
+    # Keep model variables in scope until main() ends
     whisper_model = None
     diarization_pipeline = None
     aligned_words = None
@@ -65,32 +66,23 @@ def main():
         # --- 6. Run Transcription & Materialize Results ---
         raw_segments, info = transcriber.run_transcription(whisper_model, paths['audio_file'])
         if raw_segments is None: raise Exception("Transcription failed.")
-        # --- >>> Materialize Segments IMMEDIATELY <<< ---
+        # --- >>> Materialize Segments <<< ---
         print("Materializing transcript segments into list (might trigger GPU access)...")
         start_materialize = time.time()
         segments_list = list(raw_segments) # Convert generator/iterable to list
         print(f"Materialized {len(segments_list)} segments in {time.time() - start_materialize:.2f} seconds.")
 
-
-        # --- >>> Unload Models AFTER Materialization <<< ---
-        print("Unloading AI models from memory...")
-        try:
-            if 'whisper_model' in locals() and whisper_model is not None: del whisper_model
-            if 'diarization_pipeline' in locals() and diarization_pipeline is not None: del diarization_pipeline
-            if torch.cuda.is_available(): torch.cuda.empty_cache(); print("Models unloaded and CUDA cache cleared.")
-            else: print("Models unloaded (CUDA not available).")
-            whisper_model = None; diarization_pipeline = None # Clear references
-        except Exception as e: print(f"Warning: Error unloading models or clearing cache: {e}")
-
+        # --- MODEL UNLOADING BLOCK REMOVED --- # <---------------- REMOVED
 
         # --- 7. Align Results (Using Materialized List) ---
-        # This should now be primarily CPU-bound without unexpected GPU spikes
+        # This alignment function (tuned multiprocessing) will use the list
+        # Models are still technically loaded in memory here, but alignment code shouldn't use GPU.
         aligned_words = alignment.align_speech_and_speakers(segments_list, speaker_turns)
         if aligned_words is None: raise Exception("Alignment failed critically.")
 
         # --- 8. Save Transcripts ---
         print("-" * 50)
-        # Use the fixed output_utils.py from the previous step
+        # Ensure using the fixed output_utils.py
         txt_saved = output_utils.save_to_txt(aligned_words, paths['output_txt_file'])
         srt_saved = output_utils.save_to_srt(aligned_words, paths['output_srt_file'], config.SRT_OPTIONS)
         if not txt_saved or not srt_saved: print("Warning: Transcript saving failed."); processing_successful = False
@@ -101,11 +93,13 @@ def main():
 
     # --- 9. Cleanup ---
     finally:
+        # Delete intermediate audio file regardless of success/failure
         if config.DELETE_TEMP_AUDIO: file_manager.delete_temp_audio(paths['audio_file'])
+        # Note: Models are NOT explicitly deleted here anymore. Python GC handles it on exit.
 
     # --- 10. Git & Move ---
     if processing_successful:
-        # (Git and Move logic remains unchanged from previous version)
+        # (Git and Move logic remains unchanged)
         git_success = False
         if config.GIT_ENABLED:
             try:

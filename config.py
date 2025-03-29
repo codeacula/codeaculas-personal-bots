@@ -31,3 +31,9 @@ SRT_OPTIONS = {
 # --- Git Options ---
 GIT_ENABLED = True # Enable/disable Git operations
 GIT_COMMIT_MESSAGE_PREFIX = "Add transcript for" # Prefix for commit messages
+
+# --- Alignment Multiprocessing Tuning ---
+# Target number of words for each parallel alignment task
+ALIGNMENT_TARGET_WORDS_PER_CHUNK = 5000
+# Maximum number of worker processes to use for alignment (e.g., physical cores, or less)
+ALIGNMENT_MAX_WORKERS = 12 # Set based on your preference/CPU (e.g., os.cpu_count() // 2)
