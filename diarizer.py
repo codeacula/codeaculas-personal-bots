@@ -5,15 +5,13 @@ from pyannote.audio import Pipeline
 import os
 import sys
 
-# _diarization_pipeline_cache = {} # Optional caching
-
 def load_diarization_pipeline(pipeline_name, auth_token=None):
     """ Loads the pyannote.audio diarization pipeline. """
     print(f"Loading speaker diarization pipeline: {pipeline_name}...")
     try:
         pipeline = Pipeline.from_pretrained(
             pipeline_name,
-            use_auth_token=auth_token # Pass token if provided in config
+            use_auth_token=auth_token
         )
         if torch.cuda.is_available():
              pipeline.to(torch.device("cuda"))
@@ -48,7 +46,6 @@ def extract_speaker_turns(diarization_result):
     try:
         for turn, _, speaker_label in diarization_result.itertracks(yield_label=True):
             speaker_turns.append({"start": turn.start, "end": turn.end, "speaker": speaker_label})
-        # Sort by start time to ensure correct order for alignment
         speaker_turns.sort(key=lambda x: x['start'])
         return speaker_turns
     except Exception as e:

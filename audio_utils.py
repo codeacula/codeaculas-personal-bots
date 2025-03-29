@@ -18,7 +18,6 @@ def extract_audio(video_path, audio_output_path):
     try:
         process = subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
         print("FFmpeg audio extraction successful.")
-        # Optional: print(process.stderr)
         return True
     except FileNotFoundError:
          print("Error: ffmpeg command not found. Make sure ffmpeg is installed and in your system's PATH.")

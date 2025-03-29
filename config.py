@@ -1,3 +1,4 @@
+# config.py
 # Configuration settings for the transcription process
 
 import os
@@ -8,7 +9,9 @@ WHISPER_DEVICE = "cuda"         # "cuda" or "cpu"
 WHISPER_COMPUTE_TYPE = "float16" # "float16", "int8_float16", "int8"
 
 DIARIZATION_PIPELINE_NAME = "pyannote/speaker-diarization-3.1"
-HUGGINGFACE_AUTH_TOKEN = None
+# Optional: Set Hugging Face token here if not using CLI login
+# HUGGINGFACE_AUTH_TOKEN = "hf_YOUR_TOKEN_HERE"
+HUGGINGFACE_AUTH_TOKEN = None # Set to None to rely on CLI login
 
 # --- Paths and File Management ---
 # Use raw strings (r"...") for Windows paths if needed, but os.path.join handles separators
