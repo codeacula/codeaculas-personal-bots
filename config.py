@@ -4,14 +4,15 @@
 import os
 
 # --- Model/Device Settings ---
-WHISPER_MODEL_SIZE = "large-v3" # "tiny.en", "base.en", ..., "large-v3"
-WHISPER_DEVICE = "cuda"         # "cuda" or "cpu"
-WHISPER_COMPUTE_TYPE = "float16" # "float16", "int8_float16", "int8"
+WHISPER_MODEL_SIZE = "large-v3"
+WHISPER_DEVICE = "cuda"
+# Change to int8 for potentially faster batched inference
+WHISPER_COMPUTE_TYPE = "int8" # Was "float16"
+WHISPER_BEAM_SIZE = 4 # Keep beam size at 4 from last test
+WHISPER_BATCH_SIZE = 8 # Set batch size based on benchmark
 
 DIARIZATION_PIPELINE_NAME = "pyannote/speaker-diarization-3.1"
-# Optional: Set Hugging Face token here if not using CLI login
-# HUGGINGFACE_AUTH_TOKEN = "hf_YOUR_TOKEN_HERE"
-HUGGINGFACE_AUTH_TOKEN = None # Set to None to rely on CLI login
+HUGGINGFACE_AUTH_TOKEN = None
 
 # --- Paths and File Management ---
 # Use raw strings (r"...") for Windows paths if needed, but os.path.join handles separators
