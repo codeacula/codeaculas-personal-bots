@@ -9,21 +9,20 @@ Built using powerful open-source libraries like `faster-whisper` for efficient t
 * **Audio Extraction:** Automatically extracts audio from video files using `ffmpeg`.
 * **Speaker Diarization:** Identifies different speakers and assigns labels (SPEAKER_00, SPEAKER_01, etc.) using `pyannote.audio`.
 * **Accurate Transcription:** Generates text transcripts with word-level timestamps using `faster-whisper` (leveraging Whisper large-v3 by default).
-* **Speaker Alignment:** Assigns speaker labels to the corresponding words in the transcript.
-* **Output Formats:** Saves transcripts as both plain TXT and timestamped SRT files.
+* **Speaker Alignment:** Assigns speaker labels to the corresponding words in the transcript using optimized parallel processing.
+* **Output Formats:** Saves transcripts as both plain TXT and timestamped SRT files with configurable formatting options.
 * **Organized Output:** Sorts transcript files into `YYYY/MM` subdirectories within a configurable output path.
-* **Optimized Performance:** Uses optimized alignment algorithms and batched inference (configurable) for faster processing. Dynamic CPU core usage for alignment step based on workload.
-* **Git Integration:** Automatically stages, commits, and pushes the generated transcript files to a specified Git repository (configurable).
-* **File Management:** Cleans up temporary audio files and moves the original processed video to a designated folder (configurable).
-* **Configurable:** Key settings like model names, paths, batch size, beam size, and feature toggles are managed in `config.py`.
-* **Modular Code:** Refactored into separate Python modules for better organization and maintainability.
+* **Optimized Performance:** Uses batched inference (configurable) for faster processing and dynamic CPU core allocation based on workload.
+* **Git Integration:** Automatically stages, commits, and pushes the generated transcript files to a specified Git repository.
+* **File Management:** Cleans up temporary audio files and moves the original processed video to a designated folder.
+* **Configurable:** Key settings like model size, paths, batch size, beam size, and feature toggles are managed in `config.py`.
 
 ## Requirements & Prerequisites
 
 * **System:**
-  * Python 3.11 (recommended due to library compatibility observed during development)
+  * Python 3.11 (recommended due to library compatibility)
   * `ffmpeg`: Must be installed and accessible via the system PATH. ([Download](https://ffmpeg.org/download.html))
-  * `git`: Must be installed and accessible via the system PATH. Credentials must be configured for pushing to your remote repository without interactive prompts (e.g., SSH key, credential manager).
+  * `git`: Must be installed and accessible via the system PATH if Git integration is enabled.
 * **Hardware:**
   * NVIDIA GPU with CUDA support is **highly recommended** for reasonable performance. Tested on RTX 3080 (10GB VRAM).
   * Sufficient RAM (32GB recommended, especially for large models/long files).
@@ -33,79 +32,85 @@ Built using powerful open-source libraries like `faster-whisper` for efficient t
 
 ## Setup & Installation
 
-1. **Clone/Download:** Get the script files into your project directory (e.g., `D:\Projects\home-ai`).
+1. **Clone/Download:** Get the script files into your project directory.
 2. **Create Virtual Environment:**
 
     ```bash
-    cd D:\Projects\home-ai
+    cd path/to/project
     python -m venv .venv
-    .\.venv\Scripts\activate
+    .\.venv\Scripts\activate  # Windows
+    source .venv/bin/activate  # Linux/Mac
     ```
 
-    *(Adjust python command/activation based on your OS/Python version)*
 3. **Install Dependencies:**
 
     ```bash
     pip install -r requirements.txt
     ```
 
-    *(Remember to generate `requirements.txt` first using `pip freeze > requirements.txt` within the activated venv)*
-4. **Install `ffmpeg`:** Download from the official website and ensure the `ffmpeg.exe` location is added to your system's PATH environment variable.
-5. **Install/Configure `git`:** Install Git if you haven't already, and ensure your user name, email, and push credentials (SSH/HTTPS) are configured. Initialize the output directory (`D:\Projects\work-notes` in the default config) as a Git repository if it isn't already (`git init`).
-6. **Hugging Face Login:** Run `huggingface-cli login` in your terminal and follow the prompts to log in with your Hugging Face account token (after accepting model terms on the website).
+4. **Install `ffmpeg`:** Download from the official website and ensure it's in your system PATH.
+5. **Install/Configure `git`:** If using Git integration, ensure credentials are set up to push without interactive prompts.
+6. **Hugging Face Login:** Run `huggingface-cli login` and follow the prompts (after accepting model terms on the website).
 
 ## Configuration
 
-Most settings are controlled via the `config.py` file. Key options include:
+Edit the `config.py` file to customize:
 
-* `WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `WHISPER_BEAM_SIZE`, `WHISPER_BATCH_SIZE`: Control transcription model and performance.
-* `DIARIZATION_PIPELINE_NAME`: Selects the speaker diarization model.
-* `HUGGINGFACE_AUTH_TOKEN`: Can optionally store your HF token here (use `None` to rely on CLI login).
-* `REPO_ROOT`: Path to the root of your Git repository where transcripts will be stored.
-* `TRANSCRIPT_BASE_DIR_NAME`: Subfolder name for transcripts within the repo root.
-* `PROCESSED_VIDEO_DIR`: Fixed path where processed videos will be moved.
-* `DELETE_TEMP_AUDIO`, `MOVE_PROCESSED_VIDEO`: Toggle cleanup actions.
-* `SRT_OPTIONS`: Control SRT file formatting.
-* `GIT_ENABLED`, `GIT_COMMIT_MESSAGE_PREFIX`: Control Git integration.
-* `ALIGNMENT_TARGET_WORDS_PER_CHUNK`, `ALIGNMENT_MAX_WORKERS`: Tune alignment parallelism.
+* **Models & Performance:**
+  * `WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`: Control transcription model.
+  * `WHISPER_BEAM_SIZE`, `WHISPER_BATCH_SIZE`: Adjust transcription quality/performance.
+  * `DIARIZATION_PIPELINE_NAME`: Select the speaker diarization model.
+
+* **File Management:**
+  * `REPO_ROOT`: Path to your Git repository root for storing transcripts.
+  * `TRANSCRIPT_BASE_DIR_NAME`: Subfolder name for transcripts.
+  * `PROCESSED_VIDEO_DIR`: Directory where processed videos will be moved.
+  * `DELETE_TEMP_AUDIO`, `MOVE_PROCESSED_VIDEO`: Toggle cleanup actions.
+
+* **Output Format:**
+  * `SRT_OPTIONS`: Control SRT subtitle formatting options.
+
+* **Git Integration:**
+  * `GIT_ENABLED`: Toggle Git operations.
+  * `GIT_COMMIT_MESSAGE_PREFIX`: Control Git commit message format.
+
+* **Performance Tuning:**
+  * `ALIGNMENT_TARGET_WORDS_PER_CHUNK`, `ALIGNMENT_MAX_WORKERS`: Control parallelism.
 
 ## Usage
 
-Run the main script from your activated virtual environment, providing the path to the video file as a command-line argument:
+Run the main script from your activated virtual environment:
 
 ```bash
-python transcribe_meeting.py "C:\path\to\your\video\file.mkv"
+python transcribe_meeting.py "path/to/your/video/file.mkv"
 ```
-
-(Remember to use quotes if the path contains spaces)
 
 The script will:
 
-1. Extract audio to a temporary `.wav` file next to the video.
+1. Extract audio to a temporary `.wav` file.
 2. Load models (downloads may occur on first run).
 3. Perform diarization and transcription.
 4. Align speakers with words.
 5. Save `.txt` and `.srt` transcripts to `{REPO_ROOT}/Transcripts/{YYYY}/{MM}/`.
-6. Clean up the temporary `.wav` file (if enabled).
+6. Clean up temporary files (if enabled).
 7. Commit and push transcripts to Git (if enabled).
-8. Move the original video file to `PROCESSED_VIDEO_DIR` (if enabled and previous steps succeeded).
+8. Move the original video file to `PROCESSED_VIDEO_DIR` (if enabled).
 
 ## Modules Overview
-
-The tool is structured into several Python modules:
 
 * `transcribe_meeting.py`: Main entry point, orchestrates the workflow.
 * `config.py`: Stores configuration settings.
 * `audio_utils.py`: Handles `ffmpeg` audio extraction.
 * `transcriber.py`: Manages `faster-whisper` model loading and transcription.
 * `diarizer.py`: Manages `pyannote.audio` pipeline loading and diarization.
-* `alignment.py`: Performs alignment of words to speakers (optimized).
+* `alignment.py`: Performs parallel alignment of words to speakers.
 * `output_utils.py`: Formats and saves TXT and SRT files.
-* `file_manager.py`: Handles path calculations, directory creation, file moving/deletion.
+* `file_manager.py`: Handles path calculations and file operations.
 * `git_utils.py`: Handles Git command execution.
+* `checkcuda.py`: Utility to verify CUDA/GPU availability.
 
-## Known Issues / Limitations
+## Known Limitations
 
-* **Speaker Diarization Accuracy:** `pyannote.audio` performance can vary depending on audio quality, number of speakers, crosstalk, etc. Speaker labels might sometimes be incorrect or fragmented.
-* **Punctuation/Capitalization:** Output from Whisper models often lacks sophisticated punctuation and consistent capitalization. Manual editing may be needed for formal documents.
-* **Materialization Time:** The step involving iterating Whisper results to get word timestamps ("Materializing segments...") can be time-consuming (~4-5 mins for a 1hr video observed in testing), though faster with batching enabled.
+* **Speaker Diarization Accuracy:** Performance varies depending on audio quality and number of speakers.
+* **Materialization Time:** Iterating Whisper results to get word timestamps can take significant time for longer videos.
+* **GPU Memory:** Large models require significant VRAM, especially for longer videos.

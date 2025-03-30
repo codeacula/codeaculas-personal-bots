@@ -1,20 +1,20 @@
 # alignment.py
 # Aligns Whisper word segments with Pyannote speaker turns using multiprocessing
-# with DYNAMICALLY calculated limited workers and explicit chunksize.
 
 import time
 import traceback
 import multiprocessing
 import os
 import bisect
+import logging
 from functools import partial
 import math
+from typing import Dict, List, Any, Tuple, Optional, Union, Callable
 
 # Import config to get tuning parameters
 import config
 
-# Worker function remains the same
-def _find_speaker_for_word(word_info, speaker_turns_tuple):
+def _find_speaker_for_word(word_info: Dict[str, Any], speaker_turns_tuple: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
     """ Finds the speaker for a single word using binary search (bisect). """
     word_start = word_info['start']
     word_end = word_info['end']
@@ -35,12 +35,12 @@ def _find_speaker_for_word(word_info, speaker_turns_tuple):
     return word_info
 
 
-def align_speech_and_speakers(segments, speaker_turns):
+def align_speech_and_speakers(segments: List[Any], speaker_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """ Aligns Whisper word segments with Pyannote speaker turns using multiprocessing. """
-    print("Aligning transcript segments with speakers (Parallel CPU - Dynamic Workers)...") #<-- Message changed
+    logging.info("Aligning transcript segments with speakers (Parallel CPU - Dynamic Workers)...")
     start_alignment = time.time()
 
-    if not speaker_turns: print("Warning: No speaker turns provided..."); speaker_turns = []
+    if not speaker_turns: logging.warning("Warning: No speaker turns provided..."); speaker_turns = []
 
     # Prepare word data
     words_to_process = []
@@ -52,15 +52,15 @@ def align_speech_and_speakers(segments, speaker_turns):
             words_to_process.append({"start": word.start, "end": word.end, "text": word_text, "word_index": word_index})
             word_index += 1
 
-    if not words_to_process: print("No words found to align."); return []
+    if not words_to_process: logging.warning("No words found to align."); return []
 
     total_words = len(words_to_process)
-    print(f"Total words to align: {total_words}")
+    logging.info(f"Total words to align: {total_words}")
 
     speaker_turns.sort(key=lambda x: x['start'])
     speaker_turns_tuple = tuple(speaker_turns)
 
-    # --- Determine Number of Workers Dynamically --- # <-- New Logic Here
+    # Determine number of workers dynamically based on workload
     target_chunk_size = config.ALIGNMENT_TARGET_WORDS_PER_CHUNK
     max_workers = config.ALIGNMENT_MAX_WORKERS
 
@@ -74,23 +74,21 @@ def align_speech_and_speakers(segments, speaker_turns):
     else:
          num_workers = 1 # Default to 1 worker if no words or invalid config
 
-    # Calculate chunksize for pool.map based on the *actual* number of workers being used
+    # Calculate chunksize for pool.map based on the actual number of workers
     chunk_factor = 4 # Aim for roughly 4 chunks per worker for load balancing
     chunksize = max(1, math.ceil(total_words / (num_workers * chunk_factor))) if total_words > 0 else 1
 
-    print(f"Using {num_workers} worker processes (Max configured: {max_workers}) with chunksize {chunksize}.")
-    # --------------------------------------------
+    logging.info(f"Using {num_workers} worker processes (Max configured: {max_workers}) with chunksize {chunksize}.")
 
     worker_func = partial(_find_speaker_for_word, speaker_turns_tuple=speaker_turns_tuple)
     aligned_words_results = []
     try:
-        # Use Pool with the dynamically calculated number of processes
         with multiprocessing.Pool(processes=num_workers) as pool:
             aligned_words_results = pool.map(worker_func, words_to_process, chunksize=chunksize)
     except Exception as e:
-        print(f"Error during parallel alignment: {e}")
+        logging.error(f"Error during parallel alignment: {e}")
         traceback.print_exc()
         return []
 
-    print(f"Alignment complete in {time.time() - start_alignment:.2f} seconds.")
+    logging.info(f"Alignment complete in {time.time() - start_alignment:.2f} seconds.")
     return aligned_words_results
