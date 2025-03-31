@@ -1,91 +1,133 @@
-# config.py
-# Configuration settings for the transcription process
+"""
+Configuration management for the transcribe-meeting package.
+
+This module handles loading configuration from environment variables,
+configuration files, and default values, with validation.
+"""
 
 import os
+import logging
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Any, Optional, Union, Literal
 
-# --- Model/Device Settings ---
-WHISPER_MODEL_SIZE = "large-v3"
-WHISPER_DEVICE = "cuda"
-# Change to int8 for potentially faster batched inference
-WHISPER_COMPUTE_TYPE = "int8" # Was "float16"
-WHISPER_BEAM_SIZE = 4 # Keep beam size at 4 from last test
-WHISPER_BATCH_SIZE = 8 # Set batch size based on benchmark
+# Define types
+ComputeType = Literal["float16", "float32", "int8"]
+DeviceType = Literal["cuda", "cpu"]
 
-DIARIZATION_PIPELINE_NAME = "pyannote/speaker-diarization-3.1"
-HUGGINGFACE_AUTH_TOKEN = None
-
-# --- Paths and File Management ---
-# Use raw strings (r"...") for Windows paths if needed, but os.path.join handles separators
-REPO_ROOT = r"D:\Projects\work-notes" # Root of the Git repository
-TRANSCRIPT_BASE_DIR_NAME = "Transcripts" # Subdirectory for transcripts within repo
-PROCESSED_VIDEO_DIR = r"D:\Processed" # Fixed directory for processed videos
-DELETE_TEMP_AUDIO = True # Delete the intermediate WAV file?
-MOVE_PROCESSED_VIDEO = True # Move the original video after processing?
-
-# --- SRT Formatting Options ---
-SRT_OPTIONS = {
-    "max_line_length": 42,
-    "max_words_per_entry": 10,
-    "speaker_gap_threshold": 1.0, # Seconds gap to force new SRT entry
+# Base configuration with defaults
+DEFAULT_CONFIG = {
+    # Repository configuration
+    "REPO_ROOT": str(Path(__file__).parent.parent.parent),
+    "TRANSCRIPT_BASE_DIR_NAME": "transcripts",
+    "PROCESSED_VIDEO_DIR": "processed",
+    
+    # Whisper model configuration
+    "WHISPER_MODEL_SIZE": "medium",  # tiny, base, small, medium, large
+    "WHISPER_DEVICE": "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu",
+    "WHISPER_COMPUTE_TYPE": "float16",  # float16, float32, int8
+    
+    # Diarization configuration
+    "DIARIZATION_PIPELINE_NAME": "pyannote/speaker-diarization@2.1",
+    "HUGGINGFACE_AUTH_TOKEN": os.environ.get("HUGGINGFACE_AUTH_TOKEN", ""),
+    
+    # Resource management
+    "GPU_MEMORY_THRESHOLD_MB": 2000,  # Minimum required GPU memory in MB
+    "CPU_THREADS": os.cpu_count() or 4,  # Default to available cores or 4
 }
 
-# --- Git Options ---
-GIT_ENABLED = True # Enable/disable Git operations
-GIT_COMMIT_MESSAGE_PREFIX = "Add transcript for" # Prefix for commit messages
+# Configuration loaded from environment will be stored here
+_loaded_config: Dict[str, Any] = {}
 
-# --- Alignment Multiprocessing Tuning ---
-# Target number of words for each parallel alignment task
-ALIGNMENT_TARGET_WORDS_PER_CHUNK = 5000
-# Maximum number of worker processes to use for alignment (e.g., physical cores, or less)
-ALIGNMENT_MAX_WORKERS = 12 # Set based on your preference/CPU (e.g., os.cpu_count() // 2)
-
-def validate_config() -> List[str]:
-    """Validate configuration settings to prevent runtime errors"""
-    issues = []
+def _validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validate the configuration values.
     
-    # Validate model settings
-    valid_models = ["tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3"]
-    if WHISPER_MODEL_SIZE not in valid_models:
-        issues.append(f"Warning: WHISPER_MODEL_SIZE '{WHISPER_MODEL_SIZE}' may not be valid. Expected one of: {valid_models}")
-    
-    valid_devices = ["cpu", "cuda", "auto"]
-    if WHISPER_DEVICE not in valid_devices:
-        issues.append(f"Warning: WHISPER_DEVICE '{WHISPER_DEVICE}' not valid. Expected one of: {valid_devices}")
-    
-    valid_compute_types = ["float16", "float32", "int8"]
-    if WHISPER_COMPUTE_TYPE not in valid_compute_types:
-        issues.append(f"Warning: WHISPER_COMPUTE_TYPE '{WHISPER_COMPUTE_TYPE}' not valid. Expected one of: {valid_compute_types}")
-    
-    # Validate path settings
-    if not Path(REPO_ROOT).exists():
-        issues.append(f"Warning: REPO_ROOT directory '{REPO_ROOT}' does not exist")
-    
-    if PROCESSED_VIDEO_DIR and not Path(PROCESSED_VIDEO_DIR).exists():
-        issues.append(f"Warning: PROCESSED_VIDEO_DIR '{PROCESSED_VIDEO_DIR}' does not exist")
-    
-    # Validate SRT options
-    if not isinstance(SRT_OPTIONS, dict):
-        issues.append("Error: SRT_OPTIONS must be a dictionary")
-    else:
-        if "max_line_length" in SRT_OPTIONS and not isinstance(SRT_OPTIONS["max_line_length"], int):
-            issues.append("Warning: SRT_OPTIONS['max_line_length'] should be an integer")
-        if "max_words_per_entry" in SRT_OPTIONS and not isinstance(SRT_OPTIONS["max_words_per_entry"], int):
-            issues.append("Warning: SRT_OPTIONS['max_words_per_entry'] should be an integer")
-        if "speaker_gap_threshold" in SRT_OPTIONS and not isinstance(SRT_OPTIONS["speaker_gap_threshold"], (int, float)):
-            issues.append("Warning: SRT_OPTIONS['speaker_gap_threshold'] should be a number")
-    
-    # Validate alignment settings
-    if not isinstance(ALIGNMENT_TARGET_WORDS_PER_CHUNK, int) or ALIGNMENT_TARGET_WORDS_PER_CHUNK <= 0:
-        issues.append(f"Warning: ALIGNMENT_TARGET_WORDS_PER_CHUNK should be a positive integer")
-    
-    if not isinstance(ALIGNMENT_MAX_WORKERS, int) or ALIGNMENT_MAX_WORKERS <= 0:
-        issues.append(f"Warning: ALIGNMENT_MAX_WORKERS should be a positive integer")
+    Args:
+        config: Configuration dictionary to validate
         
-    return issues
+    Returns:
+        Validated configuration dictionary
+    
+    Raises:
+        ValueError: If a configuration value is invalid
+    """
+    # Validate WHISPER_MODEL_SIZE
+    valid_model_sizes = ["tiny", "base", "small", "medium", "large"]
+    if config["WHISPER_MODEL_SIZE"] not in valid_model_sizes:
+        raise ValueError(f"WHISPER_MODEL_SIZE must be one of {valid_model_sizes}")
+    
+    # Validate WHISPER_DEVICE
+    valid_devices = ["cuda", "cpu"]
+    if config["WHISPER_DEVICE"] not in valid_devices:
+        raise ValueError(f"WHISPER_DEVICE must be one of {valid_devices}")
+    
+    # Validate WHISPER_COMPUTE_TYPE
+    valid_compute_types = ["float16", "float32", "int8"]
+    if config["WHISPER_COMPUTE_TYPE"] not in valid_compute_types:
+        raise ValueError(f"WHISPER_COMPUTE_TYPE must be one of {valid_compute_types}")
+    
+    # Create paths as Path objects
+    config["REPO_ROOT"] = Path(config["REPO_ROOT"])
+    
+    # Convert numeric values
+    config["GPU_MEMORY_THRESHOLD_MB"] = int(config["GPU_MEMORY_THRESHOLD_MB"])
+    config["CPU_THREADS"] = int(config["CPU_THREADS"])
+    
+    return config
 
-# Run validation when config is imported
-config_issues = validate_config()
-for issue in config_issues:
-    logging.warning(issue)
+def load_config() -> Dict[str, Any]:
+    """
+    Load configuration from environment variables and default values.
+    
+    Environment variables take precedence over default values.
+    
+    Returns:
+        Complete configuration dictionary
+    """
+    global _loaded_config
+    
+    # Start with default config
+    config = DEFAULT_CONFIG.copy()
+    
+    # Override with environment variables
+    for key in DEFAULT_CONFIG:
+        env_value = os.environ.get(f"TRANSCRIBE_{key}")
+        if env_value is not None:
+            config[key] = env_value
+    
+    # Validate the configuration
+    config = _validate_config(config)
+    
+    # Cache the loaded config
+    _loaded_config = config
+    
+    return config
+
+def get_config() -> Dict[str, Any]:
+    """
+    Get the current configuration.
+    
+    If configuration has not been loaded yet, load it first.
+    
+    Returns:
+        Complete configuration dictionary
+    """
+    global _loaded_config
+    if not _loaded_config:
+        return load_config()
+    return _loaded_config
+
+# Load the configuration at module import time
+_loaded_config = load_config()
+
+# Export all config values as module-level constants
+REPO_ROOT = _loaded_config["REPO_ROOT"]
+TRANSCRIPT_BASE_DIR_NAME = _loaded_config["TRANSCRIPT_BASE_DIR_NAME"]
+PROCESSED_VIDEO_DIR = _loaded_config["PROCESSED_VIDEO_DIR"]
+WHISPER_MODEL_SIZE = _loaded_config["WHISPER_MODEL_SIZE"]
+WHISPER_DEVICE = _loaded_config["WHISPER_DEVICE"]
+WHISPER_COMPUTE_TYPE = _loaded_config["WHISPER_COMPUTE_TYPE"]
+DIARIZATION_PIPELINE_NAME = _loaded_config["DIARIZATION_PIPELINE_NAME"]
+HUGGINGFACE_AUTH_TOKEN = _loaded_config["HUGGINGFACE_AUTH_TOKEN"]
+GPU_MEMORY_THRESHOLD_MB = _loaded_config["GPU_MEMORY_THRESHOLD_MB"]
+CPU_THREADS = _loaded_config["CPU_THREADS"]

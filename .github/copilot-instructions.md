@@ -13,6 +13,7 @@
 - Remove unused imports and variables, and ensure no dead code remains in the repository
 - Use type hints and static type checking with mypy to improve code readability and maintainability
 - Leave comments in the code to explain complex logic or algorithms, but avoid over-commenting simple or self-explanatory code
+- Ensure the code builds correctly when done, and that all tests pass before committing changes
 
 ## AI-Specific Practices
 

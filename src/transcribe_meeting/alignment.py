@@ -6,7 +6,7 @@ import multiprocessing
 import logging
 from functools import partial
 import math
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple
 import traceback
 import bisect
 
