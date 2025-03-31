@@ -5,22 +5,20 @@ import argparse
 import sys
 import os
 import time
-import traceback
-import torch
 import logging
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Any, Optional
 
 # Import utility modules
-import config
-import audio_utils
-import transcriber
-from transcriber import ModelManager
-import diarizer
-import alignment
-import output_utils
-import file_manager
-import git_utils
+from . import config
+from . import audio_utils
+from . import transcriber
+from .transcriber import ModelManager
+from . import diarizer
+from . import alignment
+from . import output_utils
+from . import file_manager
+from . import git_utils
 
 def setup_logging():
     """Configure logging with formatters and handlers"""
@@ -130,7 +128,6 @@ def main():
     # --- Error Handling ---
     except Exception as e: 
         logging.error(f"\n--- Error during main processing ---\nError: {e}")
-        traceback.print_exc()
         processing_successful = False
 
     # --- 9. Cleanup ---

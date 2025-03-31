@@ -2,9 +2,8 @@
 # Configuration settings for the transcription process
 
 import os
-import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, List
 
 # --- Model/Device Settings ---
 WHISPER_MODEL_SIZE = "large-v3"

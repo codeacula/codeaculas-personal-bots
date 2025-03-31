@@ -1,8 +1,7 @@
 # output_utils.py
 import math
-import os
 import logging
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import List, Any, Dict
 
 def format_srt_time(seconds: float) -> str:
     """ Converts seconds to SRT time format HH:MM:SS,ms """

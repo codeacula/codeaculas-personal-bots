@@ -1,9 +1,7 @@
 # audio_utils.py
 import subprocess
 import os
-import sys
 import logging
-from typing import Union, List, Dict, Any, Optional, Tuple
 
 def extract_audio(video_path: str, audio_output_path: str) -> bool:
     """ Extracts audio from video using ffmpeg. """

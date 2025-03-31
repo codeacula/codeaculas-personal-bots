@@ -114,3 +114,11 @@ The script will:
 * **Speaker Diarization Accuracy:** Performance varies depending on audio quality and number of speakers.
 * **Materialization Time:** Iterating Whisper results to get word timestamps can take significant time for longer videos.
 * **GPU Memory:** Large models require significant VRAM, especially for longer videos.
+
+## Tests
+
+To run the tests, ensure you have `pytest` installed. Then, execute the following command in the project root:
+
+```
+pytest
+```

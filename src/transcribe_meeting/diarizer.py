@@ -2,10 +2,9 @@
 import time
 import torch
 from pyannote.audio import Pipeline
-import os
-import sys
 import logging
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, Any, List, Dict
+import os
 
 def load_diarization_pipeline(pipeline_name: str, auth_token: Optional[str] = None) -> Optional[Pipeline]:
     """ Loads the pyannote.audio diarization pipeline. """
