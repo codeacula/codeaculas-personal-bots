@@ -2,6 +2,8 @@
 import subprocess
 import logging
 import os
+from azure.devops.connection import Connection
+from msrest.authentication import BasicAuthentication
 
 def run_git_command(command_list, cwd):
     logging.info(f"Running Git command: {' '.join(command_list)} in {cwd}")
@@ -33,3 +35,30 @@ def add_commit_push(repo_path, files_to_add_relative, commit_message):
     if not run_git_command(git_push_command, cwd=repo_path): logging.error("Git push failed.") # Decide if this is critical
     else: logging.info("Git operations completed successfully.")
     logging.info("-" * 50); return True # Indicate Git sequence was attempted/completed
+
+def get_azure_devops_client():
+    personal_access_token = os.getenv("AZURE_DEVOPS_PAT")
+    organization_url = os.getenv("AZURE_DEVOPS_ORG_URL")
+    credentials = BasicAuthentication('', personal_access_token)
+    connection = Connection(base_url=organization_url, creds=credentials)
+    return connection.clients.get_git_client()
+
+def get_pull_requests(project):
+    client = get_azure_devops_client()
+    prs = client.get_pull_requests(project)
+    return prs
+
+def get_tasks(project):
+    client = get_azure_devops_client()
+    tasks = client.get_work_items(project)
+    return tasks
+
+def get_task_changes(project):
+    client = get_azure_devops_client()
+    task_changes = client.get_work_item_changes(project)
+    return task_changes
+
+def post_pr_comment(project, pr_id, comment):
+    client = get_azure_devops_client()
+    response = client.create_comment(project, pr_id, comment)
+    return response

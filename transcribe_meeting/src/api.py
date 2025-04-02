@@ -12,9 +12,12 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, APIRouter, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+from azure.devops.connection import Connection
+from msrest.authentication import BasicAuthentication
 
 from . import audio_utils
 from . import transcriber
@@ -182,3 +185,81 @@ async def health_check() -> Dict[str, str]:
         "version": "0.1.0",
         "cuda_available": "true" if resource_manager.check_gpu_availability() else "false"
     }
+
+# Azure DevOps Router
+azure_devops_router = APIRouter()
+
+# Azure DevOps Client
+def get_azure_devops_client():
+    personal_access_token = os.getenv("AZURE_DEVOPS_PAT")
+    organization_url = os.getenv("AZURE_DEVOPS_ORG_URL")
+    credentials = BasicAuthentication('', personal_access_token)
+    connection = Connection(base_url=organization_url, creds=credentials)
+    return connection.clients.get_git_client()
+
+@azure_devops_router.get("/azure-devops/prs")
+async def get_pull_requests(request: Request):
+    """
+    Get pull requests from Azure DevOps.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        List of pull requests
+    """
+    client = get_azure_devops_client()
+    project = os.getenv("AZURE_DEVOPS_PROJECT")
+    prs = client.get_pull_requests(project)
+    return prs
+
+@azure_devops_router.get("/azure-devops/tasks")
+async def get_tasks(request: Request):
+    """
+    Get tasks from Azure DevOps.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        List of tasks
+    """
+    client = get_azure_devops_client()
+    project = os.getenv("AZURE_DEVOPS_PROJECT")
+    tasks = client.get_work_items(project)
+    return tasks
+
+@azure_devops_router.get("/azure-devops/task-changes")
+async def get_task_changes(request: Request):
+    """
+    Get task changes from Azure DevOps.
+    
+    Args:
+        request: FastAPI request object
+        
+    Returns:
+        List of task changes
+    """
+    client = get_azure_devops_client()
+    project = os.getenv("AZURE_DEVOPS_PROJECT")
+    task_changes = client.get_work_item_changes(project)
+    return task_changes
+
+@azure_devops_router.post("/azure-devops/prs/{pr_id}/comments")
+async def post_pr_comment(pr_id: int, comment: str):
+    """
+    Post a comment to a specific pull request in Azure DevOps.
+    
+    Args:
+        pr_id: Pull request ID
+        comment: Comment text
+        
+    Returns:
+        Response from Azure DevOps
+    """
+    client = get_azure_devops_client()
+    project = os.getenv("AZURE_DEVOPS_PROJECT")
+    response = client.create_comment(project, pr_id, comment)
+    return response
+
+app.include_router(azure_devops_router, prefix="/api")
