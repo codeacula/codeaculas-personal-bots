@@ -40,6 +40,10 @@ DEFAULT_CONFIG = {
     # Alignment configuration
     "ALIGNMENT_MAX_WORKERS": max(1, (os.cpu_count() or 4) - 1),  # Keep one CPU core free
     "ALIGNMENT_TARGET_WORDS_PER_CHUNK": 500,  # Target words per chunk for parallel alignment
+
+    # Azure DevOps configuration
+    "AZURE_DEVOPS_ORG_URL": os.environ.get("AZURE_DEVOPS_ORG_URL", ""),
+    "AZURE_DEVOPS_PROJECT": os.environ.get("AZURE_DEVOPS_PROJECT", ""),
 }
 
 # Configuration loaded from environment will be stored here
@@ -146,3 +150,5 @@ GPU_MEMORY_THRESHOLD_MB = _loaded_config["GPU_MEMORY_THRESHOLD_MB"]
 CPU_THREADS = _loaded_config["CPU_THREADS"]
 ALIGNMENT_MAX_WORKERS = _loaded_config["ALIGNMENT_MAX_WORKERS"]
 ALIGNMENT_TARGET_WORDS_PER_CHUNK = _loaded_config["ALIGNMENT_TARGET_WORDS_PER_CHUNK"]
+AZURE_DEVOPS_ORG_URL = _loaded_config["AZURE_DEVOPS_ORG_URL"]
+AZURE_DEVOPS_PROJECT = _loaded_config["AZURE_DEVOPS_PROJECT"]

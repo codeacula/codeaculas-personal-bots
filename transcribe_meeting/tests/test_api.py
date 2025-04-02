@@ -293,3 +293,66 @@ async def test_process_video_extraction_failure(mock_extract_audio):
     
     # Only extract_audio should be called
     mock_extract_audio.assert_called_once()
+
+
+@patch("transcribe_meeting.api.get_azure_devops_client")
+def test_get_pull_requests(mock_get_client, test_client):
+    """Test fetching pull requests from Azure DevOps."""
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.get_pull_requests.return_value = [{"id": 1, "title": "PR 1"}]
+    
+    response = test_client.get("/api/azure-devops/prs")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == 1
+    assert data[0]["title"] == "PR 1"
+
+
+@patch("transcribe_meeting.api.get_azure_devops_client")
+def test_get_tasks(mock_get_client, test_client):
+    """Test fetching tasks from Azure DevOps."""
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.get_work_items.return_value = [{"id": 1, "title": "Task 1"}]
+    
+    response = test_client.get("/api/azure-devops/tasks")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == 1
+    assert data[0]["title"] == "Task 1"
+
+
+@patch("transcribe_meeting.api.get_azure_devops_client")
+def test_get_task_changes(mock_get_client, test_client):
+    """Test fetching task changes from Azure DevOps."""
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.get_work_item_changes.return_value = [{"id": 1, "change": "Updated"}]
+    
+    response = test_client.get("/api/azure-devops/task-changes")
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == 1
+    assert data[0]["change"] == "Updated"
+
+
+@patch("transcribe_meeting.api.get_azure_devops_client")
+def test_post_pr_comment(mock_get_client, test_client):
+    """Test posting a comment to a specific pull request in Azure DevOps."""
+    mock_client = MagicMock()
+    mock_get_client.return_value = mock_client
+    mock_client.create_comment.return_value = {"id": 1, "comment": "Test comment"}
+    
+    response = test_client.post("/api/azure-devops/prs/1/comments", json={"comment": "Test comment"})
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == 1
+    assert data["comment"] == "Test comment"
