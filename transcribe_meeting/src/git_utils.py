@@ -1,7 +1,7 @@
 # git_utils.py
 import subprocess
-import os
 import logging
+import os
 
 def run_git_command(command_list, cwd):
     logging.info(f"Running Git command: {' '.join(command_list)} in {cwd}")
@@ -18,6 +18,12 @@ def add_commit_push(repo_path, files_to_add_relative, commit_message):
     if not files_to_add_relative: logging.warning("Git: No files specified to add."); return False
     logging.info("-" * 50); logging.info("Attempting Git operations...")
     if not os.path.isdir(repo_path): logging.error(f"Error: Git repository path does not exist: {repo_path}"); return False
+
+    logging.info("Pulling latest changes...")
+    git_pull_command = ["git", "pull"]
+    if not run_git_command(git_pull_command, cwd=repo_path):
+        logging.error("Git pull failed."); return False
+
     git_add_command = ["git", "add"] + files_to_add_relative; logging.info(f"Staging files: {', '.join(files_to_add_relative)}")
     if not run_git_command(git_add_command, cwd=repo_path): logging.error("Git add failed."); return False
     logging.info(f"Committing with message: {commit_message}"); git_commit_command = ["git", "commit", "-m", commit_message]

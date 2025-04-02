@@ -1,8 +1,7 @@
 # output_utils.py
 import math
-import os
 import logging
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import List, Any, Dict
 
 def format_srt_time(seconds: float) -> str:
     """ Converts seconds to SRT time format HH:MM:SS,ms """
@@ -13,6 +12,20 @@ def format_srt_time(seconds: float) -> str:
     mins = max(0,(int(seconds) // 60) % 60)
     hrs = max(0, int(seconds) // 3600)
     return f"{hrs:02}:{mins:02}:{sec:02},{millisec:03}"
+
+def save_transcript_with_speakers(aligned_words: List[Dict[str, Any]], filepath: str) -> bool:
+    """
+    Save the transcript with speaker information to a text file.
+    
+    Args:
+        aligned_words: List of word dictionaries with speaker information
+        filepath: Path to save the transcript file
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    logging.info(f"Saving transcript with speakers to: {filepath}")
+    return save_to_txt(aligned_words, filepath)
 
 def save_to_txt(aligned_words: List[Dict[str, Any]], filepath: str) -> bool:
     """ Saves the aligned transcript to a simple TXT file. """
