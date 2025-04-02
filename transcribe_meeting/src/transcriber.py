@@ -1,10 +1,11 @@
 # transcriber.py
 import time
-from faster_whisper import WhisperModel, BatchedInferencePipeline
 import os
-import config
+from faster_whisper import WhisperModel, BatchedInferencePipeline
+from . import config
+from . import audio_utils
 import logging
-from typing import Optional, Tuple, Any, Dict, List, Union
+from typing import Optional, Any, Tuple, Dict
 
 class ModelManager:
     """Context manager for handling Whisper model resources"""

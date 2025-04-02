@@ -1,15 +1,61 @@
 # diarizer.py
 import time
 import torch
-from pyannote.audio import Pipeline
 import os
-import sys
+import shutil
+import platform
+from pathlib import Path
+from pyannote.audio import Pipeline
 import logging
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, Any, List, Dict
+
+# Set environment variable to disable symlinks warning and use direct copies instead
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
+
+# Custom workaround for Windows symlink issues
+def windows_workaround_for_pyannote():
+    """
+    Workaround for Windows symlink issues with pyannote.audio.
+    
+    This function manually copies necessary files instead of relying on symlinks
+    which require elevated privileges on Windows.
+    """
+    if platform.system() != "Windows":
+        return
+    
+    # Define source and target paths
+    cache_dir = Path(os.path.expanduser("~/.cache"))
+    hf_cache = cache_dir / "huggingface" / "hub"
+    torch_cache = cache_dir / "torch" / "pyannote" / "speechbrain"
+    
+    # Create directories
+    torch_cache.mkdir(parents=True, exist_ok=True)
+    
+    # Find the speechbrain model directory
+    try:
+        speechbrain_dirs = list(hf_cache.glob("**/models--speechbrain--spkrec-ecapa-voxceleb/snapshots/*"))
+        if speechbrain_dirs:
+            src_dir = speechbrain_dirs[0]
+            # Copy the hyperparams.yaml file directly instead of symlinking
+            src_file = src_dir / "hyperparams.yaml"
+            if src_file.exists():
+                dst_file = torch_cache / "hyperparams.yaml"
+                try:
+                    shutil.copy2(src_file, dst_file)
+                    logging.info(f"Successfully copied {src_file} to {dst_file}")
+                except Exception as e:
+                    logging.warning(f"Failed to copy file: {e}")
+    except Exception as e:
+        logging.warning(f"Windows workaround failed: {e}")
 
 def load_diarization_pipeline(pipeline_name: str, auth_token: Optional[str] = None) -> Optional[Pipeline]:
     """ Loads the pyannote.audio diarization pipeline. """
     logging.info(f"Loading speaker diarization pipeline: {pipeline_name}...")
+    
+    # Apply Windows workaround
+    windows_workaround_for_pyannote()
+    
     try:
         pipeline = Pipeline.from_pretrained(
             pipeline_name,

@@ -1,116 +1,148 @@
-# Video Meeting Transcription & Diarization Pipeline
+# Transcribe Meeting
 
-A Python-based tool to automatically transcribe video files, identify speakers (diarization), and generate timestamped transcripts in TXT and SRT formats. It also includes features for file management and optional Git integration.
-
-Built using powerful open-source libraries like `faster-whisper` for efficient transcription and `pyannote.audio` for speaker diarization, designed to run locally on capable hardware.
+A Python package for automatically transcribing and diarizing meeting recordings.
 
 ## Features
 
-* **Audio Extraction:** Automatically extracts audio from video files using `ffmpeg`.
-* **Speaker Diarization:** Identifies different speakers and assigns labels (SPEAKER_00, SPEAKER_01, etc.) using `pyannote.audio`.
-* **Accurate Transcription:** Generates text transcripts with word-level timestamps using `faster-whisper` (leveraging Whisper large-v3 by default).
-* **Speaker Alignment:** Assigns speaker labels to the corresponding words in the transcript using optimized parallel processing.
-* **Output Formats:** Saves transcripts as both plain TXT and timestamped SRT files with configurable formatting options.
-* **Organized Output:** Sorts transcript files into `YYYY/MM` subdirectories within a configurable output path.
-* **Optimized Performance:** Uses batched inference (configurable) for faster processing and dynamic CPU core allocation based on workload.
-* **Git Integration:** Automatically stages, commits, and pushes the generated transcript files to a specified Git repository.
-* **File Management:** Cleans up temporary audio files and moves the original processed video to a designated folder.
-* **Configurable:** Key settings like model size, paths, batch size, beam size, and feature toggles are managed in `config.py`.
+- Extract audio from video files
+- Transcribe speech to text using OpenAI's Whisper model
+- Identify speakers through diarization using Pyannote
+- Generate readable transcripts with speaker attribution
+- Manage resources efficiently on GPU and CPU
+- Process and organize transcript files by date
 
-## Requirements & Prerequisites
+## Installation
 
-* **System:**
-  * Python 3.11 (recommended due to library compatibility)
-  * `ffmpeg`: Must be installed and accessible via the system PATH. ([Download](https://ffmpeg.org/download.html))
-  * `git`: Must be installed and accessible via the system PATH if Git integration is enabled.
-* **Hardware:**
-  * NVIDIA GPU with CUDA support is **highly recommended** for reasonable performance. Tested on RTX 3080 (10GB VRAM).
-  * Sufficient RAM (32GB recommended, especially for large models/long files).
-* **Python Packages:** See `requirements.txt`. Install using `pip install -r requirements.txt`.
-* **External Accounts:**
-  * **Hugging Face Hub Account:** Required for downloading `pyannote.audio` models. You *must* accept the user conditions for `pyannote/speaker-diarization-3.1` and `pyannote/segmentation-3.0` (or equivalent) on the Hugging Face website. You need to be logged in via the CLI: `huggingface-cli login`.
+### Prerequisites
 
-## Setup & Installation
+- Python 3.8 or higher
+- FFmpeg (for audio extraction)
+- CUDA-compatible GPU (optional but recommended)
 
-1. **Clone/Download:** Get the script files into your project directory.
-2. **Create Virtual Environment:**
+### Installing from source
 
-    ```bash
-    cd path/to/project
-    python -m venv .venv
-    .\.venv\Scripts\activate  # Windows
-    source .venv/bin/activate  # Linux/Mac
-    ```
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/home-ai.git
+cd home-ai
 
-3. **Install Dependencies:**
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+# Install the package in development mode
+pip install -e ".[dev]"
+```
 
-4. **Install `ffmpeg`:** Download from the official website and ensure it's in your system PATH.
-5. **Install/Configure `git`:** If using Git integration, ensure credentials are set up to push without interactive prompts.
-6. **Hugging Face Login:** Run `huggingface-cli login` and follow the prompts (after accepting model terms on the website).
+### Environment Variables
 
-## Configuration
+Set the following environment variables to configure the tool:
 
-Edit the `config.py` file to customize:
-
-* **Models & Performance:**
-  * `WHISPER_MODEL_SIZE`, `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`: Control transcription model.
-  * `WHISPER_BEAM_SIZE`, `WHISPER_BATCH_SIZE`: Adjust transcription quality/performance.
-  * `DIARIZATION_PIPELINE_NAME`: Select the speaker diarization model.
-
-* **File Management:**
-  * `REPO_ROOT`: Path to your Git repository root for storing transcripts.
-  * `TRANSCRIPT_BASE_DIR_NAME`: Subfolder name for transcripts.
-  * `PROCESSED_VIDEO_DIR`: Directory where processed videos will be moved.
-  * `DELETE_TEMP_AUDIO`, `MOVE_PROCESSED_VIDEO`: Toggle cleanup actions.
-
-* **Output Format:**
-  * `SRT_OPTIONS`: Control SRT subtitle formatting options.
-
-* **Git Integration:**
-  * `GIT_ENABLED`: Toggle Git operations.
-  * `GIT_COMMIT_MESSAGE_PREFIX`: Control Git commit message format.
-
-* **Performance Tuning:**
-  * `ALIGNMENT_TARGET_WORDS_PER_CHUNK`, `ALIGNMENT_MAX_WORKERS`: Control parallelism.
+```
+TRANSCRIBE_HUGGINGFACE_AUTH_TOKEN=your_huggingface_token_here
+TRANSCRIBE_WHISPER_MODEL_SIZE=medium  # tiny, base, small, medium, large
+TRANSCRIBE_WHISPER_DEVICE=cuda  # cuda or cpu
+```
 
 ## Usage
 
-Run the main script from your activated virtual environment:
+### Command Line
 
 ```bash
-python transcribe_meeting.py "path/to/your/video/file.mkv"
+# Basic usage
+transcribe-meeting path/to/your/video_file.mp4
+
+# With verbose logging
+transcribe-meeting path/to/your/video_file.mp4 --verbose
 ```
 
-The script will:
+### As a Library
 
-1. Extract audio to a temporary `.wav` file.
-2. Load models (downloads may occur on first run).
-3. Perform diarization and transcription.
-4. Align speakers with words.
-5. Save `.txt` and `.srt` transcripts to `{REPO_ROOT}/Transcripts/{YYYY}/{MM}/`.
-6. Clean up temporary files (if enabled).
-7. Commit and push transcripts to Git (if enabled).
-8. Move the original video file to `PROCESSED_VIDEO_DIR` (if enabled).
+```python
+from transcribe_meeting import extract_audio, transcriber, diarizer, alignment, output_utils
 
-## Modules Overview
+# Extract audio from video
+audio_path = "path/to/audio.wav"
+extract_audio("path/to/video.mp4", audio_path)
 
-* `transcribe_meeting.py`: Main entry point, orchestrates the workflow.
-* `config.py`: Stores configuration settings.
-* `audio_utils.py`: Handles `ffmpeg` audio extraction.
-* `transcriber.py`: Manages `faster-whisper` model loading and transcription.
-* `diarizer.py`: Manages `pyannote.audio` pipeline loading and diarization.
-* `alignment.py`: Performs parallel alignment of words to speakers.
-* `output_utils.py`: Formats and saves TXT and SRT files.
-* `file_manager.py`: Handles path calculations and file operations.
-* `git_utils.py`: Handles Git command execution.
-* `checkcuda.py`: Utility to verify CUDA/GPU availability.
+# Load models
+whisper_model = transcriber.ModelManager("medium", "cuda", "float16").load_model()
+diarization_pipeline = diarizer.load_diarization_pipeline()
 
-## Known Limitations
+# Run processing
+raw_segments, _ = transcriber.run_transcription(whisper_model, audio_path)
+segments_list = list(raw_segments)  # Materialize generator
+diarization_result = diarizer.run_diarization(diarization_pipeline, audio_path)
+speaker_turns = diarizer.extract_speaker_turns(diarization_result)
 
-* **Speaker Diarization Accuracy:** Performance varies depending on audio quality and number of speakers.
-* **Materialization Time:** Iterating Whisper results to get word timestamps can take significant time for longer videos.
-* **GPU Memory:** Large models require significant VRAM, especially for longer videos.
+# Align speakers with transcription
+aligned_words = alignment.align_words_with_speakers(segments_list, speaker_turns)
+
+# Save output
+output_utils.save_transcript_with_speakers(aligned_words, "output_transcript.txt")
+```
+
+## Project Structure
+
+```
+home-ai/
+├── docs/                   # Documentation files
+├── logs/                   # Log files (generated at runtime)
+├── scripts/                # Helper scripts
+├── src/                    # Source code 
+│   └── transcribe_meeting/ # Main package
+│       ├── __init__.py     # Package exports
+│       ├── alignment.py    # Speaker/word alignment
+│       ├── audio_utils.py  # Audio extraction and processing
+│       ├── config.py       # Configuration management
+│       ├── diarizer.py     # Speaker diarization
+│       ├── file_manager.py # File and directory management
+│       ├── output_utils.py # Output formatting
+│       ├── resource_manager.py # GPU/CPU resource management
+│       ├── transcriber.py  # Whisper transcription
+│       └── transcribe_meeting.py # Main entry point
+├── tests/                  # Test suite
+│   └── test_*.py           # Test modules
+├── .gitignore              # Git ignore file
+├── LICENSE                 # Project license
+├── pyproject.toml          # Project configuration for tools
+├── README.md               # This file
+└── setup.py                # Package installation configuration
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/transcribe_meeting
+```
+
+### Code Formatting and Linting
+
+```bash
+# Format code
+black src tests
+
+# Sort imports
+isort src tests
+
+# Run linter
+flake8 src tests
+
+# Type checking
+mypy src
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [OpenAI Whisper](https://github.com/openai/whisper) for the speech recognition model
+- [Pyannote Audio](https://github.com/pyannote/pyannote-audio) for the speaker diarization
