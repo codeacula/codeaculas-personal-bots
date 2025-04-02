@@ -1,134 +1,201 @@
-# alignment.py
-# Aligns Whisper word segments with Pyannote speaker turns using multiprocessing
-
-import time
-import multiprocessing
+"""Alignment utilities for matching transcribed words with speaker segments."""
 import logging
-from functools import partial
-import math
-from typing import Dict, List, Any, Tuple
-import traceback
-import bisect
+from typing import List, Dict, Any, Optional
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
-# Import config to get tuning parameters
-from . import config
 
-def _find_speaker_for_word(word_info: Dict[str, Any], speaker_turns_tuple: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
+def align_words_with_speakers(
+    transcribed_segments: List[Dict[str, Any]],
+    speaker_turns: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """
-    Finds the speaker for a single word using binary search (bisect).
+    Align transcribed words with their corresponding speakers.
 
     Args:
-        word_info (Dict[str, Any]): Information about the word, including start and end times.
-        speaker_turns_tuple (Tuple[Dict[str, Any], ...]): Tuple of speaker turn dictionaries.
+        transcribed_segments: List of transcribed word segments
+        speaker_turns: List of speaker turn segments
 
     Returns:
-        Dict[str, Any]: Updated word information with the assigned speaker.
+        List of word segments with speaker information
     """
-    word_start = word_info['start']
-    word_end = word_info['end']
-    word_midpoint = word_start + (word_end - word_start) / 2
-    speaker = "UNKNOWN"
+    if not speaker_turns or not transcribed_segments:
+        logging.warning("Empty speaker turns or transcribed segments.")
+        return []
 
-    if not speaker_turns_tuple:
-        word_info['speaker'] = speaker
-        return word_info
+    aligned_words = []
+    for segment in transcribed_segments:
+        if not segment or "words" not in segment:
+            continue
 
-    turn_start_times = [turn['start'] for turn in speaker_turns_tuple]
-    potential_turn_index = bisect.bisect_right(turn_start_times, word_midpoint) - 1
+        for word in segment["words"]:
+            word_with_speaker = _find_speaker_for_word(word, speaker_turns)
+            if word_with_speaker:
+                aligned_words.append(word_with_speaker)
 
-    if potential_turn_index >= 0 and \
-       speaker_turns_tuple[potential_turn_index]['start'] <= word_midpoint < speaker_turns_tuple[potential_turn_index]['end']:
-        speaker = speaker_turns_tuple[potential_turn_index]['speaker']
-    else:
-        next_turn_index = potential_turn_index + 1
-        if next_turn_index < len(speaker_turns_tuple) and \
-           speaker_turns_tuple[next_turn_index]['start'] <= word_midpoint < speaker_turns_tuple[next_turn_index]['end']:
-            speaker = speaker_turns_tuple[next_turn_index]['speaker']
-
-    word_info['speaker'] = speaker
-    return word_info
+    return sorted(aligned_words, key=lambda x: x["start"])
 
 
-def align_speech_and_speakers(segments: List[Any], speaker_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _find_speaker_for_word(
+    word: Dict[str, Any],
+    speaker_turns: List[Dict[str, Any]]
+) -> Optional[Dict[str, Any]]:
     """
-    Aligns Whisper word segments with Pyannote speaker turns using multiprocessing.
+    Find the speaker for a given word based on timing.
 
     Args:
-        segments (List[Any]): List of Whisper word segments.
-        speaker_turns (List[Dict[str, Any]]): List of speaker turn dictionaries.
+        word: Word information dict
+        speaker_turns: List of speaker turn segments
 
     Returns:
-        List[Dict[str, Any]]: List of aligned word dictionaries with speaker information.
+        Word dict with speaker information or None if no match
     """
-    logging.info("Aligning transcript segments with speakers (Parallel CPU - Dynamic Workers)...")
-    start_alignment = time.time()
+    if not word or "start" not in word or "end" not in word:
+        return None
 
-    if not speaker_turns:
-        logging.warning("Warning: No speaker turns provided...")
-        speaker_turns = []
+    word_start = word["start"]
+    word_end = word["end"]
+    word_duration = word_end - word_start
+    word_midpoint = word_start + (word_duration / 2)
 
-    # Prepare word data
-    words_to_process = []
-    word_index = 0
-    for segment in segments:
-        for word in segment.words:
-            word_text = word.word.strip()
-            if not word_text:
+    # Find the speaker turn that contains the word's midpoint
+    for turn in speaker_turns:
+        if turn["start"] <= word_midpoint <= turn["end"]:
+            return {
+                "text": word["text"],
+                "start": word_start,
+                "end": word_end,
+                "speaker": turn["speaker"],
+                "confidence": word.get("confidence", 1.0)
+            }
+
+    # If no exact match, find the closest speaker turn
+    return _find_closest_speaker_turn(word, speaker_turns)
+
+
+def _find_closest_speaker_turn(
+    word: Dict[str, Any],
+    speaker_turns: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Find the closest speaker turn for a word that doesn't fall within any turn.
+
+    Args:
+        word: Word information dict
+        speaker_turns: List of speaker turn segments
+
+    Returns:
+        Word dict with speaker information from closest turn
+    """
+    word_start = word["start"]
+    word_end = word["end"]
+    word_midpoint = word_start + ((word_end - word_start) / 2)
+    
+    closest_turn = None
+    min_distance = float('inf')
+
+    for turn in speaker_turns:
+        turn_start = turn["start"]
+        turn_end = turn["end"]
+        turn_midpoint = turn_start + ((turn_end - turn_start) / 2)
+        
+        distance = abs(turn_midpoint - word_midpoint)
+        if distance < min_distance:
+            min_distance = distance
+            closest_turn = turn
+
+    if closest_turn:
+        return {
+            "text": word["text"],
+            "start": word_start,
+            "end": word_end,
+            "speaker": closest_turn["speaker"],
+            "confidence": word.get("confidence", 1.0)
+        }
+    
+    # Fallback if no speaker turns are found
+    return {
+        "text": word["text"],
+        "start": word_start,
+        "end": word_end,
+        "speaker": "UNKNOWN",
+        "confidence": word.get("confidence", 1.0)
+    }
+
+
+def align_speech_and_speakers(
+    speech_segments: List[Dict[str, Any]],
+    speaker_segments: List[Dict[str, Any]],
+    max_workers: Optional[int] = None,
+    chunk_size: int = 500
+) -> List[Dict[str, Any]]:
+    """
+    Parallel processing version of word-speaker alignment.
+
+    Args:
+        speech_segments: List of transcribed speech segments
+        speaker_segments: List of speaker segments
+        max_workers: Maximum number of worker processes
+        chunk_size: Number of words to process in each chunk
+
+    Returns:
+        List of aligned word segments with speaker information
+    """
+    # Extract all words from speech segments
+    all_words = []
+    for segment in speech_segments:
+        if segment and "words" in segment:
+            all_words.extend(segment["words"])
+
+    if not all_words or not speaker_segments:
+        return []
+
+    # Chunk the words for parallel processing
+    word_chunks = [
+        all_words[i:i + chunk_size]
+        for i in range(0, len(all_words), chunk_size)
+    ]
+
+    aligned_words = []
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # Submit chunks for parallel processing
+        future_to_chunk = {
+            executor.submit(
+                _process_word_chunk,
+                chunk,
+                speaker_segments
+            ): chunk for chunk in word_chunks
+        }
+
+        # Collect results
+        for future in as_completed(future_to_chunk):
+            try:
+                chunk_result = future.result()
+                aligned_words.extend(chunk_result)
+            except Exception as e:
+                logging.error(f"Error processing word chunk: {e}")
                 continue
-            words_to_process.append({"start": word.start, "end": word.end, "text": word_text, "word_index": word_index})
-            word_index += 1
 
-    if not words_to_process:
-        logging.warning("No words found to align.")
-        return []
+    # Sort by start time
+    return sorted(aligned_words, key=lambda x: x["start"])
 
-    total_words = len(words_to_process)
-    logging.info(f"Total words to align: {total_words}")
 
-    speaker_turns.sort(key=lambda x: x['start'])
-    speaker_turns_tuple = tuple(speaker_turns)
+def _process_word_chunk(
+    words: List[Dict[str, Any]],
+    speaker_segments: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """
+    Process a chunk of words for parallel alignment.
 
-    # Determine number of workers dynamically based on workload
-    target_chunk_size = config.ALIGNMENT_TARGET_WORDS_PER_CHUNK
-    max_workers = config.ALIGNMENT_MAX_WORKERS
+    Args:
+        words: List of words to process
+        speaker_segments: List of speaker segments
 
-    if total_words > 0 and target_chunk_size > 0:
-        # Calculate ideal number of chunks/workers based on target size
-        num_chunks_ideal = math.ceil(total_words / target_chunk_size)
-        # Use the minimum of ideal workers vs the configured max workers
-        num_workers = min(max_workers, num_chunks_ideal)
-        # Ensure we use at least 1 worker
-        num_workers = max(1, num_workers)
-    else:
-        num_workers = 1  # Default to 1 worker if no words or invalid config
-
-    # Calculate chunksize for pool.map based on the actual number of workers
-    chunk_factor = 4  # Aim for roughly 4 chunks per worker for load balancing
-    chunksize = max(1, math.ceil(total_words / (num_workers * chunk_factor))) if total_words > 0 else 1
-
-    logging.info(f"Using {num_workers} worker processes (Max configured: {max_workers}) with chunksize {chunksize}.")
-
-    worker_func = partial(_find_speaker_for_word, speaker_turns_tuple=speaker_turns_tuple)
-    aligned_words_results = []
-
-    try:
-        with multiprocessing.Pool(processes=num_workers) as pool:
-            aligned_words_results = pool.map(worker_func, words_to_process, chunksize=chunksize)
-    except multiprocessing.TimeoutError as e:
-        logging.error(f"Multiprocessing timeout error during parallel alignment: {e}")
-        traceback.print_exc()
-        return []
-    except multiprocessing.AuthenticationError as e:
-        logging.error(f"Multiprocessing authentication error during parallel alignment: {e}")
-        traceback.print_exc()
-        return []
-    except Exception as e:
-        logging.error(f"Unexpected error during parallel alignment: {e}")
-        traceback.print_exc()
-        return []
-
-    logging.info(f"Alignment complete in {time.time() - start_alignment:.2f} seconds.")
-    return aligned_words_results
-
-# Add an alias for backward compatibility
-align_words_with_speakers = align_speech_and_speakers
+    Returns:
+        List of words with aligned speaker information
+    """
+    aligned_chunk = []
+    for word in words:
+        aligned_word = _find_speaker_for_word(word, speaker_segments)
+        if aligned_word:
+            aligned_chunk.append(aligned_word)
+    return aligned_chunk

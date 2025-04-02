@@ -4,26 +4,18 @@ API endpoints for the transcribe_meeting package using FastAPI.
 This module provides asynchronous REST API endpoints for transcription services.
 """
 
-import os
 import uuid
 import tempfile
-import logging
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from . import audio_utils
-from . import transcriber
-from . import diarizer
-from . import alignment
-from . import output_utils
-from . import resource_manager
-from . import config
 from .core import process_video, cleanup_job_files
+
 
 app = FastAPI(
     title="Transcribe Meeting API",
@@ -49,10 +41,10 @@ class TranscriptionJob(BaseModel):
 
 @app.post("/transcribe", response_model=TranscriptionJob)
 async def transcribe_video(
-    background_tasks: BackgroundTasks, file: UploadFile = File(...)
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
 ) -> TranscriptionJob:
-    """
-    Upload a video file and start a transcription job.
+    """Upload a video file and start a transcription job.
     
     Args:
         background_tasks: FastAPI background tasks handler
@@ -87,8 +79,7 @@ async def transcribe_video(
 
 @app.get("/jobs/{job_id}", response_model=TranscriptionJob)
 async def get_job_status(job_id: str) -> TranscriptionJob:
-    """
-    Get the status of a transcription job.
+    """Get the status of a transcription job.
     
     Args:
         job_id: The job identifier
@@ -107,8 +98,7 @@ async def get_job_status(job_id: str) -> TranscriptionJob:
 
 @app.get("/jobs/{job_id}/download")
 async def download_transcript(job_id: str):
-    """
-    Download the transcript for a completed job.
+    """Download the transcript for a completed job.
     
     Args:
         job_id: The job identifier
@@ -125,14 +115,14 @@ async def download_transcript(job_id: str):
     job = jobs[job_id]
     if job["status"] != "completed" or not job["output_file"]:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Job {job_id} is not completed or has no output file"
         )
     
     output_file = Path(job["output_file"])
     if not output_file.exists():
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"Output file for job {job_id} not found"
         )
     
@@ -145,8 +135,7 @@ async def download_transcript(job_id: str):
 
 @app.delete("/jobs/{job_id}")
 async def delete_job(job_id: str) -> Dict[str, str]:
-    """
-    Delete a job and its associated files.
+    """Delete a job and its associated files.
     
     Args:
         job_id: The job identifier
@@ -171,14 +160,12 @@ async def delete_job(job_id: str) -> Dict[str, str]:
 
 @app.get("/health")
 async def health_check() -> Dict[str, str]:
-    """
-    Check API health status.
+    """Check API health status.
     
     Returns:
         Dict with status information
     """
     return {
         "status": "healthy",
-        "version": "0.1.0",
-        "cuda_available": "true" if resource_manager.check_gpu_availability() else "false"
+        "version": "0.1.0"
     }

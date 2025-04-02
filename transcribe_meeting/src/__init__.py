@@ -1,6 +1,11 @@
-# Initialize the transcribe_meeting package
+"""
+Initialize the transcribe_meeting package.
 
-# This file marks the directory as a Python package.
+This module re-exports key components for easier imports.
+"""
 
-# Add version information
 __version__ = "0.1.0"
+
+# Re-export only what's needed by the core API
+from .core import process_video, cleanup_job_files
+# Other imports should be done directly from their modules as needed

@@ -1,142 +1,121 @@
-"""
-Resource management utilities for GPU and CPU resources.
-
-This module provides functions to check available GPU memory,
-manage device selection, and handle resource allocation.
-"""
-
+"""Resource management utilities for CPU and GPU resources."""
+import gc
+import torch
 import logging
-import os
-from typing import Dict, Optional, Tuple, Union
 
-# Conditional import for torch
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
-
-from . import config
-
-class ResourceError(Exception):
-    """Exception raised for resource-related issues."""
-    pass
 
 def check_gpu_availability() -> bool:
-    """
-    Check if a CUDA-compatible GPU is available.
-    
-    Returns:
-        True if a GPU is available, False otherwise
-    """
-    if not TORCH_AVAILABLE:
-        logging.warning("PyTorch not available, defaulting to CPU")
-        return False
-    
-    return torch.cuda.is_available()
+    """Check if CUDA-capable GPU is available.
 
-def get_gpu_memory() -> Dict[int, int]:
-    """
-    Get available memory for each GPU device.
-    
     Returns:
-        Dictionary mapping GPU device IDs to available memory in megabytes
+        True if GPU is available, False otherwise
     """
-    if not TORCH_AVAILABLE or not torch.cuda.is_available():
-        return {}
-    
-    available_memory = {}
-    for i in range(torch.cuda.device_count()):
-        free_memory = torch.cuda.get_device_properties(i).total_memory
-        # Reserve some memory for the system
-        free_memory = int(free_memory * 0.9 / (1024 * 1024))  # Convert to MB
-        
-        # Get currently allocated memory
-        if hasattr(torch.cuda, 'memory_reserved'):
-            allocated = torch.cuda.memory_reserved(i) / (1024 * 1024)
-            free_memory -= int(allocated)
-        
-        available_memory[i] = free_memory
-    
-    return available_memory
+    cuda_available = torch.cuda.is_available()
+    if cuda_available:
+        logging.info("CUDA GPU is available.")
+        device_name = torch.cuda.get_device_name(0)
+        logging.info(f"Using GPU: {device_name}")
+    else:
+        logging.warning("No CUDA GPU available. Using CPU.")
+    return cuda_available
 
-def select_device() -> str:
-    """
-    Select the appropriate device based on available resources.
-    
+
+def get_gpu_memory_mb() -> int:
+    """Get available GPU memory in megabytes.
+
     Returns:
-        Device string ('cuda:X' or 'cpu')
-    
-    Raises:
-        ResourceError: If insufficient GPU memory is available
+        Available GPU memory in MB, or 0 if no GPU
     """
-    # Use configuration preference first
-    preferred_device = config.WHISPER_DEVICE
-    
-    # If CPU is preferred, return it
-    if preferred_device == "cpu":
-        logging.info("Using CPU as configured")
+    try:
+        if torch.cuda.is_available():
+            free_mem = torch.cuda.mem_get_info()[0]
+            return int(free_mem / (1024 * 1024))
+        return 0
+    except Exception as e:
+        logging.error(f"Error getting GPU memory info: {e}")
+        return 0
+
+
+def select_device(
+    prefer_gpu: bool = True,
+    min_memory_mb: int = 2000
+) -> str:
+    """Select compute device based on availability and requirements.
+
+    Args:
+        prefer_gpu: Whether to prefer GPU over CPU
+        min_memory_mb: Minimum required GPU memory in MB
+
+    Returns:
+        'cuda' if GPU is available and meets requirements, 'cpu' otherwise
+    """
+    if not prefer_gpu:
+        logging.info("GPU usage not preferred, using CPU.")
         return "cpu"
-    
-    # Check if GPU is available
-    if not check_gpu_availability():
-        logging.warning("No GPU available, falling back to CPU")
+
+    if not torch.cuda.is_available():
+        logging.warning("No CUDA GPU available, falling back to CPU.")
         return "cpu"
-    
-    # Check available GPU memory
-    memory_threshold = config.GPU_MEMORY_THRESHOLD_MB
-    gpu_memory = get_gpu_memory()
-    
-    if not gpu_memory:
-        logging.warning("Could not determine GPU memory, falling back to CPU")
+
+    available_memory = get_gpu_memory_mb()
+    if available_memory < min_memory_mb:
+        logging.warning(
+            f"Available GPU memory ({available_memory}MB) is below threshold "
+            f"({min_memory_mb}MB), falling back to CPU."
+        )
         return "cpu"
-    
-    # Select the GPU with the most available memory
-    best_gpu = max(gpu_memory.items(), key=lambda x: x[1])
-    
-    if best_gpu[1] < memory_threshold:
-        logging.warning(f"Insufficient GPU memory: {best_gpu[1]}MB available, "
-                       f"{memory_threshold}MB required. Falling back to CPU")
-        return "cpu"
-    
-    device = f"cuda:{best_gpu[0]}"
-    logging.info(f"Selected {device} with {best_gpu[1]}MB available memory")
-    return device
+
+    logging.info(f"Using GPU with {available_memory}MB available memory.")
+    return "cuda"
+
 
 def cleanup_gpu_memory() -> None:
-    """
-    Release GPU memory allocations.
-    """
-    if TORCH_AVAILABLE and torch.cuda.is_available():
-        try:
+    """Free up GPU memory by clearing cache and running garbage collection."""
+    try:
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
-            logging.debug("GPU memory cache cleared")
-        except Exception as e:
-            logging.warning(f"Failed to clear GPU memory: {e}")
+            gc.collect()
+            logging.info("GPU memory cache cleared.")
+    except Exception as e:
+        logging.error(f"Error clearing GPU memory: {e}")
 
-def get_torch_dtype(compute_type: str) -> 'torch.dtype':
-    """
-    Get the torch dtype corresponding to the requested compute type.
+
+def monitor_gpu_usage(tag: str = "") -> None:
+    """Log current GPU memory usage for monitoring.
     
     Args:
-        compute_type: The compute type string ('float16', 'float32', 'int8')
+        tag: Optional identifier for the monitoring point
+    """
+    if not torch.cuda.is_available():
+        return
+
+    try:
+        free_mem, total_mem = torch.cuda.mem_get_info()
+        used_mem = total_mem - free_mem
+        free_mb = free_mem / (1024 * 1024)
+        used_mb = used_mem / (1024 * 1024)
+        total_mb = total_mem / (1024 * 1024)
+        
+        logging.info(
+            f"GPU Memory [{tag}]: "
+            f"Used={used_mb:.0f}MB, "
+            f"Free={free_mb:.0f}MB, "
+            f"Total={total_mb:.0f}MB"
+        )
+    except Exception as e:
+        logging.error(f"Error monitoring GPU usage: {e}")
+
+
+def get_torch_device(device_str: str = "cuda") -> torch.device:
+    """Get a torch.device object for the specified device string.
+    
+    Args:
+        device_str: Device specification ('cuda' or 'cpu')
         
     Returns:
-        torch.dtype object
-    
-    Raises:
-        ValueError: If an unsupported compute type is specified
+        torch.device object for the specified device
     """
-    if not TORCH_AVAILABLE:
-        raise ImportError("PyTorch is not available")
-    
-    dtype_map = {
-        "float16": torch.float16,
-        "float32": torch.float32,
-        "int8": torch.int8,
-    }
-    
-    if compute_type not in dtype_map:
-        raise ValueError(f"Unsupported compute type: {compute_type}")
-    
-    return dtype_map[compute_type]
+    if device_str == "cuda" and not torch.cuda.is_available():
+        logging.warning("CUDA requested but not available, falling back to CPU.")
+        device_str = "cpu"
+    return torch.device(device_str)
