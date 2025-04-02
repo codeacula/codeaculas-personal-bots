@@ -15,7 +15,7 @@ A Python package for automatically transcribing and diarizing meeting recordings
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - FFmpeg (for audio extraction)
 - CUDA-compatible GPU (optional but recommended)
 
