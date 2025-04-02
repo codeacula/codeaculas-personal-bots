@@ -1,11 +1,11 @@
-# Create the main entry point for the MCP server
-from fastapi import FastAPI, UploadFile, BackgroundTasks
+from fastapi import FastAPI, UploadFile, BackgroundTasks, HTTPException
 from pathlib import Path
-from transcribe_meeting.src.core import process_video, cleanup_job_files
+from transcribe_meeting import process_video, cleanup_job_files
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid
 import tempfile
+import shutil
 
 app = FastAPI(
     title="MCP Server",
@@ -24,7 +24,7 @@ class TranscriptionJob(BaseModel):
     job_id: str
     status: str
     message: str
-    output_file: str = None
+    output_file: Optional[str] = None
 
 @app.post("/mcp/transcribe", response_model=TranscriptionJob)
 async def transcribe(background_tasks: BackgroundTasks, file: UploadFile):
@@ -34,7 +34,8 @@ async def transcribe(background_tasks: BackgroundTasks, file: UploadFile):
 
     video_path = job_dir / file.filename
     with open(video_path, "wb") as buffer:
-        buffer.write(await file.read())
+        content = await file.read()
+        buffer.write(content)
 
     jobs[job_id] = {
         "job_id": job_id,
@@ -61,3 +62,7 @@ async def delete_job(job_id: str):
     cleanup_job_files(job_id)
     del jobs[job_id]
     return {"message": f"Job {job_id} deleted successfully"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "version": "0.1.0"}

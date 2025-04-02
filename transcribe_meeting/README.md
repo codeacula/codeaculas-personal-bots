@@ -30,7 +30,7 @@ cd home-ai
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install the package in development mode
+# Install the package in development modes
 pip install -e ".[dev]"
 ```
 
@@ -38,7 +38,7 @@ pip install -e ".[dev]"
 
 Set the following environment variables to configure the tool:
 
-```
+```plaintext
 TRANSCRIBE_HUGGINGFACE_AUTH_TOKEN=your_huggingface_token_here
 TRANSCRIBE_WHISPER_MODEL_SIZE=medium  # tiny, base, small, medium, large
 TRANSCRIBE_WHISPER_DEVICE=cuda  # cuda or cpu
@@ -84,7 +84,7 @@ output_utils.save_transcript_with_speakers(aligned_words, "output_transcript.txt
 
 ## Project Structure
 
-```
+```plaintext
 home-ai/
 ├── docs/                   # Documentation files
 ├── logs/                   # Log files (generated at runtime)
