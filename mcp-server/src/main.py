@@ -50,7 +50,7 @@ async def transcribe(background_tasks: BackgroundTasks, file: UploadFile):
 @app.get("/mcp/jobs/{job_id}", response_model=TranscriptionJob)
 async def get_job_status(job_id: str):
     if job_id not in jobs:
-        return {"error": "Job not found"}
+        raise HTTPException(status_code=404, detail="Job not found")
     return TranscriptionJob(**jobs[job_id])
 
 @app.delete("/mcp/jobs/{job_id}")
