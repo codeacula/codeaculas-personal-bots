@@ -114,8 +114,12 @@ def align_speech_and_speakers(segments: List[Any], speaker_turns: List[Dict[str,
     try:
         with multiprocessing.Pool(processes=num_workers) as pool:
             aligned_words_results = pool.map(worker_func, words_to_process, chunksize=chunksize)
-    except multiprocessing.ProcessError as e:
-        logging.error(f"Multiprocessing error during parallel alignment: {e}")
+    except multiprocessing.TimeoutError as e:
+        logging.error(f"Multiprocessing timeout error during parallel alignment: {e}")
+        traceback.print_exc()
+        return []
+    except multiprocessing.AuthenticationError as e:
+        logging.error(f"Multiprocessing authentication error during parallel alignment: {e}")
         traceback.print_exc()
         return []
     except Exception as e:
