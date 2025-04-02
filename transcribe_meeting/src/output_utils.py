@@ -13,6 +13,20 @@ def format_srt_time(seconds: float) -> str:
     hrs = max(0, int(seconds) // 3600)
     return f"{hrs:02}:{mins:02}:{sec:02},{millisec:03}"
 
+def save_transcript_with_speakers(aligned_words: List[Dict[str, Any]], filepath: str) -> bool:
+    """
+    Save the transcript with speaker information to a text file.
+    
+    Args:
+        aligned_words: List of word dictionaries with speaker information
+        filepath: Path to save the transcript file
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    logging.info(f"Saving transcript with speakers to: {filepath}")
+    return save_to_txt(aligned_words, filepath)
+
 def save_to_txt(aligned_words: List[Dict[str, Any]], filepath: str) -> bool:
     """ Saves the aligned transcript to a simple TXT file. """
     logging.info(f"Saving speaker-aligned TXT transcript to: {filepath}")

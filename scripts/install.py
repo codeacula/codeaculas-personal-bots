@@ -89,6 +89,15 @@ def install_dependencies(venv_path: Path, dev_mode: bool = False):
     logger.info(f"Installing package {'with dev dependencies' if dev_mode else ''}...")
     subprocess.run(install_args, cwd=str(package_dir), check=True)
 
+    # Verify installation
+    try:
+        import transcribe_meeting
+        logger.info("Successfully installed the transcribe_meeting package.")
+    except ImportError as e:
+        logger.error(f"Failed to import transcribe_meeting after installation: {e}")
+        logger.error("Please check your virtual environment and installation.")
+        sys.exit(1)
+
 
 def check_ffmpeg():
     """Check if FFmpeg is installed."""

@@ -11,17 +11,7 @@ import traceback
 import bisect
 
 # Import config to get tuning parameters
-from transcribe_meeting import config
-
-# Configure structured logging with timestamps
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-
+from . import config
 
 def _find_speaker_for_word(word_info: Dict[str, Any], speaker_turns_tuple: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
     """
@@ -135,3 +125,6 @@ def align_speech_and_speakers(segments: List[Any], speaker_turns: List[Dict[str,
 
     logging.info(f"Alignment complete in {time.time() - start_alignment:.2f} seconds.")
     return aligned_words_results
+
+# Add an alias for backward compatibility
+align_words_with_speakers = align_speech_and_speakers

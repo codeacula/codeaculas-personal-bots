@@ -9,6 +9,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, Literal
+import torch
 
 # Define types
 ComputeType = Literal["float16", "float32", "int8"]
@@ -22,9 +23,11 @@ DEFAULT_CONFIG = {
     "PROCESSED_VIDEO_DIR": "processed",
     
     # Whisper model configuration
-    "WHISPER_MODEL_SIZE": "medium",  # tiny, base, small, medium, large
-    "WHISPER_DEVICE": "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu",
-    "WHISPER_COMPUTE_TYPE": "float16",  # float16, float32, int8
+    "WHISPER_MODEL_SIZE": "large",  # tiny, base, small, medium, large
+    "WHISPER_DEVICE": "cuda" if torch.cuda.is_available() else "cpu",
+    "WHISPER_COMPUTE_TYPE": "int8",  # float16, float32, int8
+    "WHISPER_BATCH_SIZE": 16,       # Batch size for inference
+    "WHISPER_BEAM_SIZE": 5,         # Beam size for inference
     
     # Diarization configuration
     "DIARIZATION_PIPELINE_NAME": "pyannote/speaker-diarization@2.1",
@@ -33,6 +36,10 @@ DEFAULT_CONFIG = {
     # Resource management
     "GPU_MEMORY_THRESHOLD_MB": 2000,  # Minimum required GPU memory in MB
     "CPU_THREADS": os.cpu_count() or 4,  # Default to available cores or 4
+    
+    # Alignment configuration
+    "ALIGNMENT_MAX_WORKERS": max(1, (os.cpu_count() or 4) - 1),  # Keep one CPU core free
+    "ALIGNMENT_TARGET_WORDS_PER_CHUNK": 500,  # Target words per chunk for parallel alignment
 }
 
 # Configuration loaded from environment will be stored here
@@ -72,6 +79,10 @@ def _validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
     # Convert numeric values
     config["GPU_MEMORY_THRESHOLD_MB"] = int(config["GPU_MEMORY_THRESHOLD_MB"])
     config["CPU_THREADS"] = int(config["CPU_THREADS"])
+    config["WHISPER_BATCH_SIZE"] = int(config["WHISPER_BATCH_SIZE"])
+    config["WHISPER_BEAM_SIZE"] = int(config["WHISPER_BEAM_SIZE"])
+    config["ALIGNMENT_MAX_WORKERS"] = int(config["ALIGNMENT_MAX_WORKERS"])
+    config["ALIGNMENT_TARGET_WORDS_PER_CHUNK"] = int(config["ALIGNMENT_TARGET_WORDS_PER_CHUNK"])
     
     return config
 
@@ -127,7 +138,11 @@ PROCESSED_VIDEO_DIR = _loaded_config["PROCESSED_VIDEO_DIR"]
 WHISPER_MODEL_SIZE = _loaded_config["WHISPER_MODEL_SIZE"]
 WHISPER_DEVICE = _loaded_config["WHISPER_DEVICE"]
 WHISPER_COMPUTE_TYPE = _loaded_config["WHISPER_COMPUTE_TYPE"]
+WHISPER_BATCH_SIZE = _loaded_config["WHISPER_BATCH_SIZE"]
+WHISPER_BEAM_SIZE = _loaded_config["WHISPER_BEAM_SIZE"]
 DIARIZATION_PIPELINE_NAME = _loaded_config["DIARIZATION_PIPELINE_NAME"]
 HUGGINGFACE_AUTH_TOKEN = _loaded_config["HUGGINGFACE_AUTH_TOKEN"]
 GPU_MEMORY_THRESHOLD_MB = _loaded_config["GPU_MEMORY_THRESHOLD_MB"]
 CPU_THREADS = _loaded_config["CPU_THREADS"]
+ALIGNMENT_MAX_WORKERS = _loaded_config["ALIGNMENT_MAX_WORKERS"]
+ALIGNMENT_TARGET_WORDS_PER_CHUNK = _loaded_config["ALIGNMENT_TARGET_WORDS_PER_CHUNK"]
