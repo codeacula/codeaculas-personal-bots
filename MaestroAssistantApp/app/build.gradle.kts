@@ -56,4 +56,8 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    implementation(libs.porcupine)  // Porcupine for hotword detection
+    implementation(libs.vosk.android)  // Vosk for offline speech-to-text
+    implementation(libs.androidx.core.ktx.v160)  // Kotlin extensions for Android
+    implementation(libs.androidx.appcompat) // AppCompat
 }
