@@ -1,16 +1,19 @@
 # file_manager.py
+"""File and directory management utilities."""
 import datetime
 import shutil
 import logging
 from pathlib import Path
 from typing import Dict, Union
 
-def calculate_paths(video_path: Union[str, Path], 
-                   repo_root: Union[str, Path], 
-                   transcript_base_dir_name: str,
-                   processed_video_dir: Union[str, Path]) -> Dict[str, Path]:
-    """
-    Calculate all necessary file paths for processing.
+
+def calculate_paths(
+    video_path: Union[str, Path],
+    repo_root: Union[str, Path],
+    transcript_base_dir_name: str,
+    processed_video_dir: Union[str, Path]
+) -> Dict[str, Path]:
+    """Calculate all necessary file paths for processing.
     
     Args:
         video_path: Path to the input video file
@@ -41,9 +44,9 @@ def calculate_paths(video_path: Union[str, Path],
     
     return paths
 
+
 def create_directories(paths: Dict[str, Path]) -> None:
-    """
-    Create necessary directories for output files.
+    """Create necessary directories for output files.
     
     Args:
         paths: Dictionary of paths from calculate_paths()
@@ -55,9 +58,9 @@ def create_directories(paths: Dict[str, Path]) -> None:
         logging.error(f"Failed to create transcript directory: {e}")
         raise
 
+
 def delete_temp_audio(audio_file_path: Union[str, Path]) -> None:
-    """
-    Delete temporary audio file after processing.
+    """Delete temporary audio file after processing.
     
     Args:
         audio_file_path: Path to the audio file to delete
@@ -70,10 +73,12 @@ def delete_temp_audio(audio_file_path: Union[str, Path]) -> None:
     except Exception as e:
         logging.warning(f"Could not delete intermediate audio file {audio_file_path}. Error: {e}")
 
-def move_video(video_source_path: Union[str, Path], 
-              video_dest_path: Union[str, Path]) -> bool:
-    """
-    Move processed video file to archive location.
+
+def move_video(
+    video_source_path: Union[str, Path],
+    video_dest_path: Union[str, Path]
+) -> bool:
+    """Move processed video file to archive location.
     
     Args:
         video_source_path: Source path of the video file
@@ -84,6 +89,7 @@ def move_video(video_source_path: Union[str, Path],
     """
     source_path = Path(video_source_path)
     dest_path = Path(video_dest_path)
+    
     if not dest_path or not dest_path.parent.exists():
         logging.warning("Skipping video move: destination path/dir invalid.")
         return False

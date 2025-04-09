@@ -7,5 +7,5 @@ setup(
     description="A tool for transcribing and diarizing meeting recordings",
     packages=["transcribe_meeting"],
     package_dir={"transcribe_meeting": "src"},
-    python_requires=">=3.8",
+    python_requires=">=3.11",
 )

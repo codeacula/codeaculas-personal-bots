@@ -6,9 +6,8 @@ configuration files, and default values, with validation.
 """
 
 import os
-import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, Literal
+from typing import Dict, Any, Literal
 import torch
 
 # Define types
@@ -45,9 +44,9 @@ DEFAULT_CONFIG = {
 # Configuration loaded from environment will be stored here
 _loaded_config: Dict[str, Any] = {}
 
+
 def _validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Validate the configuration values.
+    """Validate the configuration values.
     
     Args:
         config: Configuration dictionary to validate
@@ -86,9 +85,9 @@ def _validate_config(config: Dict[str, Any]) -> Dict[str, Any]:
     
     return config
 
+
 def load_config() -> Dict[str, Any]:
-    """
-    Load configuration from environment variables and default values.
+    """Load configuration from environment variables and default values.
     
     Environment variables take precedence over default values.
     
@@ -114,9 +113,9 @@ def load_config() -> Dict[str, Any]:
     
     return config
 
+
 def get_config() -> Dict[str, Any]:
-    """
-    Get the current configuration.
+    """Get the current configuration.
     
     If configuration has not been loaded yet, load it first.
     
@@ -127,6 +126,7 @@ def get_config() -> Dict[str, Any]:
     if not _loaded_config:
         return load_config()
     return _loaded_config
+
 
 # Load the configuration at module import time
 _loaded_config = load_config()

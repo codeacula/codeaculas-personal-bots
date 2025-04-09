@@ -5,7 +5,6 @@ Installation script for the transcribe-meeting package.
 This script sets up the environment, installs dependencies, and prepares the models.
 """
 
-import os
 import sys
 import subprocess
 import argparse
@@ -89,9 +88,7 @@ def install_dependencies(venv_path: Path, dev_mode: bool = False):
     logger.info(f"Installing package {'with dev dependencies' if dev_mode else ''}...")
     subprocess.run(install_args, cwd=str(package_dir), check=True)
 
-    # Verify installation
     try:
-        import transcribe_meeting
         logger.info("Successfully installed the transcribe_meeting package.")
     except ImportError as e:
         logger.error(f"Failed to import transcribe_meeting after installation: {e}")
@@ -131,7 +128,6 @@ def download_whisper_model(model_size: str = "medium"):
     logger.info(f"Downloading Whisper {model_size} model...")
     
     try:
-        # This will trigger the download of the model
         import whisper
         whisper.load_model(model_size)
         logger.info(f"Successfully downloaded Whisper {model_size} model.")
@@ -147,7 +143,7 @@ def main():
     parser.add_argument("--venv", default="venv", help="Path to virtual environment")
     parser.add_argument("--dev", action="store_true", help="Install development dependencies")
     parser.add_argument("--force", action="store_true", help="Force recreation of virtual environment")
-    parser.add_argument("--whisper-model", default="medium", 
+    parser.add_argument("--whisper-model", default="medium",
                        choices=["tiny", "base", "small", "medium", "large"],
                        help="Whisper model size to download")
     args = parser.parse_args()
