@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.transport.runtime)
+    implementation(libs.androidx.core)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -60,4 +62,8 @@ dependencies {
     implementation(libs.vosk.android)  // Vosk for offline speech-to-text
     implementation(libs.androidx.core.ktx.v160)  // Kotlin extensions for Android
     implementation(libs.androidx.appcompat) // AppCompat
+    implementation(libs.androidx.lifecycle.viewmodel.ktx) // Or latest
+    implementation(libs.androidx.lifecycle.runtime.ktx.v287) // For viewModelScope, lifecycleScope
+    implementation(libs.androidx.lifecycle.viewmodel.compose) // For Hilt ViewModel integration
+    testImplementation(libs.androidx.core.testing)
 }
