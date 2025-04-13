@@ -1,0 +1,27 @@
+name: "✨ Feature Request"
+description: Suggest a new idea or improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 💡 What's the big idea?
+        Describe what you'd like to see added, changed, or improved.
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 🧐 Why?
+      description: What problem does this solve or opportunity does it unlock?
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 📀 Suggested Solution
+      description: (Optional) Describe how you imagine this feature working
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 🧐 Related context
+      description: Link to discussions, issues, or examples (if any)

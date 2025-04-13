@@ -1,0 +1,32 @@
+name: "🤷 Question or Unsure"
+description: Not sure how to help? Start here.
+labels: [question, help wanted]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🤔 Not sure where to start?
+        No worries! Use this to ask a question, share a thought, or just explore ideas.
+
+  - type: textarea
+    id: what-youre-thinking
+    attributes:
+      label: 🧠 What’s on your mind?
+      description: Describe your question, idea, or where you're feeling stuck.
+
+  - type: dropdown
+    id: interest
+    attributes:
+      label: 👀 What are you interested in?
+      options:
+        - Exploring the project
+        - Finding a good first issue
+        - Getting help setting up
+        - Learning more about the tech stack
+        - Something else
+
+  - type: textarea
+    id: extra-notes
+    attributes:
+      label: 💬 Anything else?
+      description: Feel free to share anything else that's relevant

@@ -1,0 +1,38 @@
+name: "🐞 Bug Report"
+description: Report a reproducible issue or broken behavior
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 What’s broken?
+        Describe the bug. What happened? What did you expect?
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: 📋 Steps to Reproduce
+      description: List the steps to trigger the bug.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error: '...'
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 🧐 Expected Behavior
+      description: What should have happened instead?
+
+  - type: input
+    id: environment
+    attributes:
+      label: 🔡 Environment
+      description: OS, language versions, and anything else relevant
+      placeholder: "Windows 11, Python 3.11, .NET 8"
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: 💬 Anything else?
+      description: Optional context or notes

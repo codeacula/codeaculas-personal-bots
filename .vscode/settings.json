@@ -1,7 +1,13 @@
 {
-  "python.testing.pytestArgs": [
-    "transcribe_meeting"
-  ],
+  "editor.formatOnSave": true,
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestEnabled": true
+  "python.testing.pytestEnabled": true,
+  "chat.editing.autoAcceptDelay": 30,
+  "chat.edits2.enabled": true,
+  "chat.promptFilesLocations": {
+    "prompts/": true
+  },
+  "chat.renderRelatedFiles": true,
+  "inlineChat.enableV2": true,
+  "dotnet.defaultSolution": "./Maestro/Maestro.sln",
 }
