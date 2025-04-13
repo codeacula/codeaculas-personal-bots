@@ -9,5 +9,8 @@
   },
   "chat.renderRelatedFiles": true,
   "inlineChat.enableV2": true,
-  "dotnet.defaultSolution": "./Maestro/Maestro.sln",
+  "dotnet.defaultSolution": "Maestro.sln",
+  "githubIssues.issueBranchTitle": "task/${issueNumber}-${sanitizedLowercaseIssueTitle}",
+  "githubPullRequests.experimental.chat": false,
+  "vue.autoInsert.dotValue": false,
 }
