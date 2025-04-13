@@ -6,16 +6,18 @@ Follow this guide to write consistent and helpful commit messages.
 
 Use the conventional commit format:
 
-```
+```plaintext
 <type>(<scope>): <summary>
 ```
 
 Examples:
+
 - `feat(auth): add login endpoint`
 - `fix(ui): prevent crash on null theme`
 - `test(server): add integration test for websocket ping`
 
 ## 🔤 Common Types
+
 - `feat`: new features
 - `fix`: bug fixes
 - `docs`: documentation-only changes
@@ -25,4 +27,5 @@ Examples:
 - `chore`: maintenance tasks (build config, dependencies)
 
 ## 📦 Prompt Reference
-- [Commit Message Prompt](../prompts/copilot/commit-message.prompt.md)
+
+- [Commit Message Prompt](../prompts/tasks/commit-message.prompt.md)
