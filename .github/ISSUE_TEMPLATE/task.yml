@@ -1,0 +1,43 @@
+name: "📌 Engineering Task"
+description: Plan and track a focused task or implementation step
+labels: [task, engineering]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📌 Task Overview
+        Provide a concise summary of the task. This should describe what we're trying to accomplish and why it matters.
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: 💬 Problem or Context
+      description: What is the problem we're solving? What context should be considered?
+
+  - type: textarea
+    id: plan-or-solution
+    attributes:
+      label: 🛠️ Plan or Solution Approach
+      description: Detail your approach or plan. Include steps, edge cases, or references to related code/docs.
+
+  - type: textarea
+    id: test-strategy
+    attributes:
+      label: ✅ How will we know it’s done?
+      description: What are the expected behaviors, test conditions, or review goals?
+
+  - type: dropdown
+    id: readiness
+    attributes:
+      label: 🚦 Status
+      description: Current state of this task
+      options:
+        - Ready to work on
+        - Needs more context
+        - Blocked by something else
+
+  - type: textarea
+    id: related-links
+    attributes:
+      label: 🔗 Related Links or Notes
+      description: Add references to code, designs, or other related tasks/issues
